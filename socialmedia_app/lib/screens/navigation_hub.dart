@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'feed_screen.dart';
 import 'profile_screen.dart';
-import 'map_screen.dart'; // This correctly imports your existing file
+import 'map_screen.dart';
+import 'chat_screen.dart';
 
 class NavigationHub extends StatefulWidget {
   const NavigationHub({super.key});
@@ -13,10 +14,10 @@ class NavigationHub extends StatefulWidget {
 class _NavigationHubState extends State<NavigationHub> {
   int _selectedIndex = 0;
 
-  // 1. The list of screens (4 items)
   final List<Widget> _screens = [
     const FeedScreen(),
-    const MapScreen(), // This now uses the class from your map_screen.dart file
+    const MapScreen(),
+    const ChatScreen(), // Added ChatScreen here
     const Scaffold(body: Center(child: Text("Notifications"))),
     const ProfileScreen(),
   ];
@@ -31,10 +32,10 @@ class _NavigationHubState extends State<NavigationHub> {
         type: BottomNavigationBarType.fixed,
         selectedItemColor: const Color(0xFF00695C),
         unselectedItemColor: Colors.grey,
-        // 2. The items in the bar (must match the 4 screens above)
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: "Feed"),
           BottomNavigationBarItem(icon: Icon(Icons.map_outlined), label: "Map"),
+          BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline), label: "Chat"), // Added Chat Icon
           BottomNavigationBarItem(icon: Icon(Icons.notifications_outlined), label: "Alerts"),
           BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: "Profile"),
         ],
