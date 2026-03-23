@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../widgets/post_card.dart';
 import '../widgets/add_post_sheet.dart';
 
-// 1. Create a simple Post model to hold category data
 class Post {
   final String category;
   final String content;
@@ -17,23 +16,19 @@ class FeedScreen extends StatefulWidget {
 }
 
 class _FeedScreenState extends State<FeedScreen> {
-  // 2. Track the selected filter
   String _selectedFilter = "All Items";
 
-  // 3. Dummy data for demonstration
   final List<Post> _allPosts = [
     Post(category: "🛠️ Tools", content: "Lending my drill for the weekend!"),
     Post(category: "🌿 Garden", content: "Fresh tomatoes available at my porch."),
     Post(category: "☕ Meetups", content: "Coffee at the park tomorrow?"),
-    Post(category: "🐶 Pets", content: "Lost dog found near the oak tree."),
+    Post(category: "🆘 Help", content: "Lost dog found near the oak tree."),
     Post(category: "🛠️ Tools", content: "Need a lawnmower? I have one."),
     Post(category: "🌿 Garden", content: "Free sunflower seeds!"),
   ];
 
   @override
   Widget build(BuildContext context) {
-    // 4. Filter the list based on selection
-    // Added .where to ensure we don't accidentally include nulls
     final List<Post> filteredPosts = _selectedFilter == "All Items"
         ? _allPosts
         : _allPosts.where((post) => post.category == _selectedFilter).toList();
@@ -70,8 +65,6 @@ class _FeedScreenState extends State<FeedScreen> {
               ),
             ),
           ),
-
-          // 5. Horizontal Category Filter
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 16.0),
@@ -84,21 +77,17 @@ class _FeedScreenState extends State<FeedScreen> {
                     _buildFilterChip("🛠️ Tools"),
                     _buildFilterChip("🌿 Garden"),
                     _buildFilterChip("☕ Meetups"),
-                    _buildFilterChip("🐶 Pets"),
+                    _buildFilterChip("🆘 Help"),
                   ],
                 ),
               ),
             ),
           ),
-
-          // 6. The Main Feed List (Safe implementation)
           SliverPadding(
             padding: const EdgeInsets.only(bottom: 100),
             sliver: SliverList(
               delegate: SliverChildBuilderDelegate(
                     (context, index) {
-                  // STRICT BOUNDS CHECK:
-                  // This prevents the "null: type 'Null' is not a subtype of 'Post'" error
                   if (index < filteredPosts.length) {
                     final post = filteredPosts[index];
                     return PostCard(post: post);
@@ -111,7 +100,6 @@ class _FeedScreenState extends State<FeedScreen> {
           ),
         ],
       ),
-
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: const Color(0xFF00695C),
         icon: const Icon(Icons.add_circle_outline, color: Colors.white),
@@ -121,14 +109,19 @@ class _FeedScreenState extends State<FeedScreen> {
             context: context,
             isScrollControlled: true,
             backgroundColor: Colors.transparent,
-            builder: (context) => const AddPostSheet(),
+            builder: (context) => AddPostSheet(
+              onPostAdded: (newPost) {
+                setState(() {
+                  _allPosts.insert(0, newPost);
+                });
+              },
+            ),
           );
         },
       ),
     );
   }
 
-  // 7. Helper widget for the Category Chips
   Widget _buildFilterChip(String label) {
     bool isSelected = _selectedFilter == label;
     return GestureDetector(
