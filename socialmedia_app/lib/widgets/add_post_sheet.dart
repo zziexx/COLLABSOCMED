@@ -1,24 +1,38 @@
 import 'package:flutter/material.dart';
+import '../screens/feed_screen.dart';
 
 class AddPostSheet extends StatefulWidget {
-  const AddPostSheet({super.key});
+  final Function(Post) onPostAdded; // Add this callback
+
+  const AddPostSheet({super.key, required this.onPostAdded});
 
   @override
   State<AddPostSheet> createState() => _AddPostSheetState();
 }
 
 class _AddPostSheetState extends State<AddPostSheet> {
-  // Track the selected category
-  String _selectedCategory = "Lend";
+  String _selectedCategory = "🛠️ Tools";
+  final TextEditingController _textController = TextEditingController();
+
+  // Mapping labels to emojis to match FeedScreen categories
+  final Map<String, String> _categoryMap = {
+    "Lend": "🛠️ Tools",
+    "Swap": "🌿 Garden",
+    "Meetup": "☕ Meetups",
+    "Help": "🆘 Help",
+  };
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: EdgeInsets.only(
-        bottom: MediaQuery
-            .of(context)
-            .viewInsets
-            .bottom + 20,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
         top: 20,
         left: 20,
         right: 20,
@@ -52,6 +66,8 @@ class _AddPostSheetState extends State<AddPostSheet> {
 
           const SizedBox(height: 20),
           TextField(
+            controller: _textController,
+            autofocus: true,
             decoration: InputDecoration(
               hintText: "What are you sharing today?",
               filled: true,
@@ -70,9 +86,14 @@ class _AddPostSheetState extends State<AddPostSheet> {
             height: 55,
             child: ElevatedButton(
               onPressed: () {
-                // Here you can use _selectedCategory to save your post
-                print("Posting to category: $_selectedCategory");
-                Navigator.pop(context);
+                if (_textController.text.isNotEmpty) {
+                  final newPost = Post(
+                    category: _selectedCategory,
+                    content: _textController.text,
+                  );
+                  widget.onPostAdded(newPost); // Send data back
+                  Navigator.pop(context);
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF00695C),
@@ -89,14 +110,15 @@ class _AddPostSheetState extends State<AddPostSheet> {
   }
 
   Widget _categoryIcon(String emoji, String label) {
-    bool isSelected = _selectedCategory == label;
+    String categoryName = _categoryMap[label] ?? label;
+    bool isSelected = _selectedCategory == categoryName;
 
     return Padding(
       padding: const EdgeInsets.only(right: 15),
       child: GestureDetector(
         onTap: () {
           setState(() {
-            _selectedCategory = label;
+            _selectedCategory = categoryName;
           });
         },
         child: Column(
