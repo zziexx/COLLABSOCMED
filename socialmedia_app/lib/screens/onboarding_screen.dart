@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'navigation_hub.dart';
+import 'login_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -96,7 +96,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       if (_currentPage == _pages.length - 1) {
                         Navigator.pushReplacement(
                           context,
-                          MaterialPageRoute(builder: (context) => const NavigationHub()),
+                          MaterialPageRoute(builder: (context) => const LoginScreen()),
                         );
                       } else {
                         _controller.nextPage(

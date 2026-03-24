@@ -5,7 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import '../models/post.dart';
 
 class AddPostSheet extends StatefulWidget {
-  final Function(Post) onPostAdded;
+  final Future<void> Function(Post, XFile?) onPostAdded;
 
   const AddPostSheet({super.key, required this.onPostAdded});
 
@@ -16,7 +16,9 @@ class AddPostSheet extends StatefulWidget {
 class _AddPostSheetState extends State<AddPostSheet> {
   String _selectedCategory = "🛠️ Tools";
   final TextEditingController _textController = TextEditingController();
-  String? _imagePath;
+  final TextEditingController _locationController = TextEditingController();
+  XFile? _imageFile;
+  bool _isUploading = false;
   final ImagePicker _picker = ImagePicker();
 
   final Map<String, String> _categoryMap = {
@@ -29,12 +31,14 @@ class _AddPostSheetState extends State<AddPostSheet> {
   Future<void> _pickImage() async {
     final XFile? pickedFile = await _picker.pickImage(
       source: ImageSource.gallery,
-      imageQuality: 80,
+      imageQuality: 50,
+      maxWidth: 1080,
+      maxHeight: 1080,
     );
 
     if (pickedFile != null) {
       setState(() {
-        _imagePath = pickedFile.path;
+        _imageFile = pickedFile;
       });
     }
   }
@@ -42,6 +46,7 @@ class _AddPostSheetState extends State<AddPostSheet> {
   @override
   void dispose() {
     _textController.dispose();
+    _locationController.dispose();
     super.dispose();
   }
 
@@ -58,121 +63,147 @@ class _AddPostSheetState extends State<AddPostSheet> {
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            "Share with neighbors",
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 20),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                _categoryIcon("🛠️", "Lend"),
-                _categoryIcon("🌿", "Swap"),
-                _categoryIcon("☕", "Meetup"),
-                _categoryIcon("🆘", "Help"),
-              ],
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Share with neighbors",
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
-          ),
-          const SizedBox(height: 20),
-          if (_imagePath != null)
-            Stack(
-              children: [
-                Container(
-                  margin: const EdgeInsets.only(bottom: 15),
-                  height: 150,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(15),
-                    color: Colors.grey[200],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(15),
-                    child: _buildPreviewImage(),
-                  ),
-                ),
-                Positioned(
-                  right: 5,
-                  top: 5,
-                  child: GestureDetector(
-                    onTap: () => setState(() => _imagePath = null),
-                    child: const CircleAvatar(
-                      backgroundColor: Colors.black54,
-                      radius: 15,
-                      child: Icon(Icons.close, color: Colors.white, size: 18),
+            const SizedBox(height: 20),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _categoryIcon("🛠️", "Lend"),
+                  _categoryIcon("🌿", "Swap"),
+                  _categoryIcon("☕", "Meetup"),
+                  _categoryIcon("🆘", "Help"),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            if (_imageFile != null)
+              Stack(
+                children: [
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 15),
+                    height: 150,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(15),
+                      color: Colors.grey[200],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(15),
+                      child: _buildPreviewImage(),
                     ),
                   ),
+                  Positioned(
+                    right: 5,
+                    top: 5,
+                    child: GestureDetector(
+                      onTap: () => setState(() => _imageFile = null),
+                      child: const CircleAvatar(
+                        backgroundColor: Colors.black54,
+                        radius: 15,
+                        child: Icon(Icons.close, color: Colors.white, size: 18),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            TextField(
+              controller: _textController,
+              decoration: InputDecoration(
+                hintText: "What are you sharing today?",
+                filled: true,
+                fillColor: Colors.grey[100],
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.add_a_photo, color: Color(0xFF00695C)),
+                  onPressed: _pickImage,
                 ),
-              ],
-            ),
-          TextField(
-            controller: _textController,
-            autofocus: true,
-            decoration: InputDecoration(
-              hintText: "What are you sharing today?",
-              filled: true,
-              fillColor: Colors.grey[100],
-              suffixIcon: IconButton(
-                icon: const Icon(Icons.add_a_photo, color: Color(0xFF00695C)),
-                onPressed: _pickImage,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(15),
+                  borderSide: BorderSide.none,
+                ),
               ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(15),
-                borderSide: BorderSide.none,
+              maxLines: 3,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _locationController,
+              decoration: InputDecoration(
+                hintText: "Where is this located? (e.g. Greenwood Hills)",
+                prefixIcon: const Icon(Icons.location_on_outlined, color: Color(0xFF00695C)),
+                filled: true,
+                fillColor: Colors.grey[100],
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(15),
+                  borderSide: BorderSide.none,
+                ),
               ),
             ),
-            maxLines: 3,
-          ),
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            height: 55,
-            child: ElevatedButton(
-              onPressed: () {
-                if (_textController.text.isNotEmpty || _imagePath != null) {
-                  final newPost = Post(
-                    id: DateTime.now().millisecondsSinceEpoch.toString(),
-                    category: _selectedCategory,
-                    content: _textController.text.isEmpty ? "" : _textController.text,
-                    imagePath: _imagePath,
-                    isUserPost: true,
-                  );
-                  widget.onPostAdded(newPost);
-                  Navigator.pop(context);
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Please add some text or an image")),
-                  );
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF00695C),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15)),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              height: 55,
+              child: ElevatedButton(
+                onPressed: _isUploading ? null : () async {
+                  if (_textController.text.isNotEmpty || _imageFile != null) {
+                    setState(() => _isUploading = true);
+                    
+                    try {
+                      final newPost = Post(
+                        id: "", 
+                        category: _selectedCategory,
+                        content: _textController.text,
+                        isUserPost: true,
+                        locationName: _locationController.text.trim(),
+                      );
+                      
+                      await widget.onPostAdded(newPost, _imageFile);
+                      
+                      if (mounted) {
+                        Navigator.pop(context);
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        setState(() => _isUploading = false);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text("Failed to post: $e")),
+                        );
+                      }
+                    }
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Please add some text or an image")),
+                    );
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF00695C),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15)),
+                ),
+                child: _isUploading 
+                  ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                  : const Text("Post to Community"),
               ),
-              child: const Text("Post to Community"),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildPreviewImage() {
-    if (_imagePath == null) return const SizedBox.shrink();
-    
-    // On Web, image_picker returns a blob URL which must be loaded via Image.network
-    if (kIsWeb || _imagePath!.startsWith('http') || _imagePath!.startsWith('blob:')) {
-      return Image.network(_imagePath!, fit: BoxFit.cover);
-    } else {
-      // On Mobile, it's a file path
-      return Image.file(File(_imagePath!), fit: BoxFit.cover);
-    }
+    if (_imageFile == null) return const SizedBox.shrink();
+    if (kIsWeb) return Image.network(_imageFile!.path, fit: BoxFit.cover);
+    return Image.file(File(_imageFile!.path), fit: BoxFit.cover);
   }
 
   Widget _categoryIcon(String emoji, String label) {

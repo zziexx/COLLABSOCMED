@@ -14,77 +14,118 @@ class FeedScreen extends StatefulWidget {
 class _FeedScreenState extends State<FeedScreen> {
   String _selectedFilter = "All Items";
   final PostService _postService = PostService();
-
-  @override
-  void initState() {
-    super.initState();
-    _postService.addListener(_onPostsChanged);
-  }
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = "";
+  bool _isSearching = false;
 
   @override
   void dispose() {
-    _postService.removeListener(_onPostsChanged);
+    _searchController.dispose();
     super.dispose();
-  }
-
-  void _onPostsChanged() {
-    setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
-    final List<Post> allPosts = _postService.allPosts;
-    
-    // Filter logic
-    final List<Post> filteredPosts = _selectedFilter == "All Items"
-        ? allPosts
-        : allPosts.where((post) => post.category == _selectedFilter).toList();
-
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          // Keeping the app bar structure consistent
-          SliverAppBar(
-            floating: true,
-            title: const Text("Neighbors Porch", style: TextStyle(fontWeight: FontWeight.bold)),
-            actions: [
-              IconButton(icon: const Icon(Icons.search), onPressed: () {}),
-            ],
-          ),
+      body: StreamBuilder<List<Post>>(
+        stream: _postService.allPostsStream,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-          // Filter Chips Row
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16.0),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  children: [
-                    _buildFilterChip("All Items"),
-                    _buildFilterChip("🛠️ Tools"),
-                    _buildFilterChip("🌿 Garden"),
-                    _buildFilterChip("☕ Meetups"),
-                    _buildFilterChip("🆘 Help"),
-                  ],
+          if (snapshot.hasError) {
+            return Center(child: Text("Error: ${snapshot.error}"));
+          }
+
+          final List<Post> allPosts = snapshot.data ?? [];
+          
+          // Filter & Search logic combined
+          final List<Post> filteredPosts = allPosts.where((post) {
+            final matchesFilter = _selectedFilter == "All Items" || post.category == _selectedFilter;
+            final matchesSearch = _searchQuery.isEmpty || 
+                post.content.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+                post.category.toLowerCase().contains(_searchQuery.toLowerCase());
+            return matchesFilter && matchesSearch;
+          }).toList();
+
+          return CustomScrollView(
+            slivers: [
+              SliverAppBar(
+                floating: true,
+                pinned: true,
+                title: _isSearching 
+                  ? TextField(
+                      controller: _searchController,
+                      autofocus: true,
+                      decoration: const InputDecoration(
+                        hintText: "Search posts...",
+                        border: InputBorder.none,
+                        hintStyle: TextStyle(color: Colors.black54),
+                      ),
+                      style: const TextStyle(color: Colors.black),
+                      onChanged: (value) {
+                        setState(() {
+                          _searchQuery = value;
+                        });
+                      },
+                    )
+                  : const Text("Neighbors Porch", style: TextStyle(fontWeight: FontWeight.bold)),
+                actions: [
+                  IconButton(
+                    icon: Icon(_isSearching ? Icons.close : Icons.search), 
+                    onPressed: () {
+                      setState(() {
+                        if (_isSearching) {
+                          _isSearching = false;
+                          _searchController.clear();
+                          _searchQuery = "";
+                        } else {
+                          _isSearching = true;
+                        }
+                      });
+                    }
+                  ),
+                ],
+              ),
+
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16.0),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        _buildFilterChip("All Items"),
+                        _buildFilterChip("🛠️ Tools"),
+                        _buildFilterChip("🌿 Garden"),
+                        _buildFilterChip("☕ Meetups"),
+                        _buildFilterChip("🆘 Help"),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
 
-          // THE FEED LIST
-          SliverPadding(
-            padding: const EdgeInsets.only(bottom: 100),
-            sliver: SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) {
-                  return PostCard(post: filteredPosts[index]);
-                },
-                childCount: filteredPosts.length,
-              ),
-            ),
-          ),
-        ],
+              filteredPosts.isEmpty
+                  ? const SliverFillRemaining(
+                      child: Center(child: Text("No matching items found.")),
+                    )
+                  : SliverPadding(
+                      padding: const EdgeInsets.only(bottom: 100),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            return PostCard(post: filteredPosts[index]);
+                          },
+                          childCount: filteredPosts.length,
+                        ),
+                      ),
+                    ),
+            ],
+          );
+        }
       ),
 
       floatingActionButton: FloatingActionButton.extended(
@@ -97,8 +138,8 @@ class _FeedScreenState extends State<FeedScreen> {
             isScrollControlled: true,
             backgroundColor: Colors.transparent,
             builder: (context) => AddPostSheet(
-              onPostAdded: (newPost) {
-                _postService.addPost(newPost);
+              onPostAdded: (newPost, imageFile) async {
+                await _postService.addPost(newPost, imageFile: imageFile);
               },
             ),
           );
