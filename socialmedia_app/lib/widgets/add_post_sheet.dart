@@ -1,8 +1,11 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart'; // Required for kIsWeb check
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../screens/feed_screen.dart';
 
 class AddPostSheet extends StatefulWidget {
-  final Function(Post) onPostAdded; // Add this callback
+  final Function(Post) onPostAdded;
 
   const AddPostSheet({super.key, required this.onPostAdded});
 
@@ -14,13 +17,30 @@ class _AddPostSheetState extends State<AddPostSheet> {
   String _selectedCategory = "🛠️ Tools";
   final TextEditingController _textController = TextEditingController();
 
-  // Mapping labels to emojis to match FeedScreen categories
+  // Changed from File? to String? to support Web and Mobile paths
+  String? _imagePath;
+  final ImagePicker _picker = ImagePicker();
+
   final Map<String, String> _categoryMap = {
     "Lend": "🛠️ Tools",
     "Swap": "🌿 Garden",
     "Meetup": "☕ Meetups",
     "Help": "🆘 Help",
   };
+
+  Future<void> _pickImage() async {
+    final XFile? pickedFile = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+    );
+
+    if (pickedFile != null) {
+      setState(() {
+        // Store the path as a string
+        _imagePath = pickedFile.path;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -65,6 +85,41 @@ class _AddPostSheetState extends State<AddPostSheet> {
           ),
 
           const SizedBox(height: 20),
+
+          // Updated Image Preview Section
+          if (_imagePath != null)
+            Stack(
+              children: [
+                Container(
+                  margin: const EdgeInsets.only(bottom: 15),
+                  height: 150,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(15),
+                    color: Colors.grey[200],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(15),
+                    child: kIsWeb
+                        ? Image.network(_imagePath!, fit: BoxFit.cover)
+                        : Image.file(File(_imagePath!), fit: BoxFit.cover),
+                  ),
+                ),
+                Positioned(
+                  right: 5,
+                  top: 5,
+                  child: GestureDetector(
+                    onTap: () => setState(() => _imagePath = null),
+                    child: const CircleAvatar(
+                      backgroundColor: Colors.black54,
+                      radius: 15,
+                      child: Icon(Icons.close, color: Colors.white, size: 18),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
           TextField(
             controller: _textController,
             autofocus: true,
@@ -72,6 +127,10 @@ class _AddPostSheetState extends State<AddPostSheet> {
               hintText: "What are you sharing today?",
               filled: true,
               fillColor: Colors.grey[100],
+              suffixIcon: IconButton(
+                icon: const Icon(Icons.add_a_photo, color: Color(0xFF00695C)),
+                onPressed: _pickImage,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(15),
                 borderSide: BorderSide.none,
@@ -86,13 +145,20 @@ class _AddPostSheetState extends State<AddPostSheet> {
             height: 55,
             child: ElevatedButton(
               onPressed: () {
-                if (_textController.text.isNotEmpty) {
+                // Allows posting if there is either text OR an image
+                if (_textController.text.isNotEmpty || _imagePath != null) {
                   final newPost = Post(
                     category: _selectedCategory,
-                    content: _textController.text,
+                    content: _textController.text.isEmpty ? "" : _textController.text,
+                    imagePath: _imagePath,
                   );
-                  widget.onPostAdded(newPost); // Send data back
+                  widget.onPostAdded(newPost);
                   Navigator.pop(context);
+                } else {
+                  // Show a message if both are empty
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Please add some text or an image")),
+                  );
                 }
               },
               style: ElevatedButton.styleFrom(
@@ -131,8 +197,7 @@ class _AddPostSheetState extends State<AddPostSheet> {
                 color: isSelected ? const Color(0xFF00695C) : Colors.teal[50],
                 border: Border.all(
                     color: isSelected ? Colors.teal[700]! : Colors.transparent,
-                    width: 2
-                ),
+                    width: 2),
               ),
               child: Text(
                 emoji,

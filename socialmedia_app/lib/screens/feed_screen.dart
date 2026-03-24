@@ -5,7 +5,13 @@ import '../widgets/add_post_sheet.dart';
 class Post {
   final String category;
   final String content;
-  Post({required this.category, required this.content});
+  final String? imagePath; // <--- Make sure this line exists
+
+  Post({
+    required this.category,
+    required this.content,
+    this.imagePath, // <--- Make sure this is in the constructor
+  });
 }
 
 class FeedScreen extends StatefulWidget {
@@ -18,17 +24,15 @@ class FeedScreen extends StatefulWidget {
 class _FeedScreenState extends State<FeedScreen> {
   String _selectedFilter = "All Items";
 
+  // Mock data - existing posts don't have images (imagePath: null)
   final List<Post> _allPosts = [
     Post(category: "🛠️ Tools", content: "Lending my drill for the weekend!"),
     Post(category: "🌿 Garden", content: "Fresh tomatoes available at my porch."),
-    Post(category: "☕ Meetups", content: "Coffee at the park tomorrow?"),
-    Post(category: "🆘 Help", content: "Lost dog found near the oak tree."),
-    Post(category: "🛠️ Tools", content: "Need a lawnmower? I have one."),
-    Post(category: "🌿 Garden", content: "Free sunflower seeds!"),
   ];
 
   @override
   Widget build(BuildContext context) {
+    // Filter logic
     final List<Post> filteredPosts = _selectedFilter == "All Items"
         ? _allPosts
         : _allPosts.where((post) => post.category == _selectedFilter).toList();
@@ -36,38 +40,9 @@ class _FeedScreenState extends State<FeedScreen> {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          SliverAppBar(
-            expandedHeight: 180.0,
-            pinned: true,
-            flexibleSpace: FlexibleSpaceBar(
-              title: const Text("Greenwood Hills",
-                  style: TextStyle(
-                      color: Colors.black87,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18)),
-              background: Stack(
-                fit: StackFit.expand,
-                children: [
-                  Image.network(
-                    'https://www.touristsecrets.com/wp-content/uploads/2024/09/hidden-wild-pawpaw-patches-of-louisiana-1727483699.jpg',                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Container(
-                      color: Colors.teal[100],
-                      child: const Icon(Icons.landscape, size: 50, color: Colors.white),
-                    ),
-                  ),
-                  Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [Colors.transparent, Colors.white.withOpacity(0.8)],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+          // ... (Keep your SliverAppBar code here)
+
+          // Filter Chips Row
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 16.0),
@@ -86,16 +61,15 @@ class _FeedScreenState extends State<FeedScreen> {
               ),
             ),
           ),
+
+          // 2. THE FEED LIST
           SliverPadding(
             padding: const EdgeInsets.only(bottom: 100),
             sliver: SliverList(
               delegate: SliverChildBuilderDelegate(
                     (context, index) {
-                  if (index < filteredPosts.length) {
-                    final post = filteredPosts[index];
-                    return PostCard(post: post);
-                  }
-                  return null;
+                  // Passes the Post (including imagePath) to the PostCard
+                  return PostCard(post: filteredPosts[index]);
                 },
                 childCount: filteredPosts.length,
               ),
@@ -103,6 +77,8 @@ class _FeedScreenState extends State<FeedScreen> {
           ),
         ],
       ),
+
+      // 3. TRIGGERING THE UPLOAD SHEET
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: const Color(0xFF00695C),
         icon: const Icon(Icons.add_circle_outline, color: Colors.white),
@@ -114,6 +90,7 @@ class _FeedScreenState extends State<FeedScreen> {
             backgroundColor: Colors.transparent,
             builder: (context) => AddPostSheet(
               onPostAdded: (newPost) {
+                // This updates the feed list with the new post + image
                 setState(() {
                   _allPosts.insert(0, newPost);
                 });
@@ -128,11 +105,7 @@ class _FeedScreenState extends State<FeedScreen> {
   Widget _buildFilterChip(String label) {
     bool isSelected = _selectedFilter == label;
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedFilter = label;
-        });
-      },
+      onTap: () => setState(() => _selectedFilter = label),
       child: Container(
         margin: const EdgeInsets.only(right: 8),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
