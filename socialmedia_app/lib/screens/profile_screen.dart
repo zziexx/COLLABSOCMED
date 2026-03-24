@@ -71,15 +71,15 @@ class ProfileScreen extends StatelessWidget {
     final List<Map<String, String>> sharedItems = [
       {
         "title": "Mountain Bike",
-        "image": "https://images.unsplash.com/photo-1673121414328-52eff37bc6d0?q=80&w=1496&auto=format&fit=crop"
+        "image": "https://tse1.mm.bing.net/th/id/OIP._0S85LmNCCw2j_oGSE5uqgHaE8?rs=1&pid=ImgDetMain&o=7&rm=3"
       },
       {
         "title": "Projector",
-        "image": "https://images.unsplash.com/photo-1528395874238-34ebe249b3f2?q=80&w=1170&auto=format&fit=crop"
+        "image": "https://cdn.shopify.com/s/files/1/1703/3025/files/UHD663_600x600.webp?v=1690418464"
       },
       {
         "title": "Camping Tent",
-        "image": "https://images.unsplash.com/photo-1633805159007-8e198bbcc931?q=80&w=1170&auto=format&fit=crop"
+        "image": "https://www.thecrazyoutdoormama.com/wp-content/uploads/2023/05/camping-setup-ideas-morris-m.jpg"
       },
       {
         "title": "Pressure Washer",
@@ -101,9 +101,14 @@ class ProfileScreen extends StatelessWidget {
         child: Column(
           children: [
             const SizedBox(height: 20),
-            const CircleAvatar(
+            CircleAvatar(
               radius: 50,
-              backgroundImage: NetworkImage('https://i.pravatar.cc/150?u=a042581f4e29026704d'),
+              backgroundColor: Colors.teal[50],
+              backgroundImage: const NetworkImage('https://i.pravatar.cc/150?u=a042581f4e29026704d'),
+              onBackgroundImageError: (exception, stackTrace) {
+                // Background image error handling
+              },
+              child: const Icon(Icons.person, size: 50, color: Color(0xFF00695C)), // Fallback icon if image fails
             ),
             const SizedBox(height: 16),
             const Text(
@@ -204,6 +209,14 @@ class ProfileScreen extends StatelessWidget {
                   return Container(
                     color: Colors.teal[50],
                     child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                  );
+                },
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    color: Colors.teal[50],
+                    child: const Center(
+                      child: Icon(Icons.image_not_supported_outlined, color: Color(0xFF00695C)),
+                    ),
                   );
                 },
               ),
