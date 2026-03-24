@@ -1,8 +1,8 @@
 import 'dart:io';
-import 'package:flutter/foundation.dart'; // Required for kIsWeb check
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import '../screens/feed_screen.dart';
+import '../models/post.dart';
 
 class AddPostSheet extends StatefulWidget {
   final Function(Post) onPostAdded;
@@ -16,8 +16,6 @@ class AddPostSheet extends StatefulWidget {
 class _AddPostSheetState extends State<AddPostSheet> {
   String _selectedCategory = "🛠️ Tools";
   final TextEditingController _textController = TextEditingController();
-
-  // Changed from File? to String? to support Web and Mobile paths
   String? _imagePath;
   final ImagePicker _picker = ImagePicker();
 
@@ -36,7 +34,6 @@ class _AddPostSheetState extends State<AddPostSheet> {
 
     if (pickedFile != null) {
       setState(() {
-        // Store the path as a string
         _imagePath = pickedFile.path;
       });
     }
@@ -70,8 +67,6 @@ class _AddPostSheetState extends State<AddPostSheet> {
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 20),
-
-          // Category Selector
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
@@ -83,10 +78,7 @@ class _AddPostSheetState extends State<AddPostSheet> {
               ],
             ),
           ),
-
           const SizedBox(height: 20),
-
-          // Updated Image Preview Section
           if (_imagePath != null)
             Stack(
               children: [
@@ -100,9 +92,7 @@ class _AddPostSheetState extends State<AddPostSheet> {
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(15),
-                    child: kIsWeb
-                        ? Image.network(_imagePath!, fit: BoxFit.cover)
-                        : Image.file(File(_imagePath!), fit: BoxFit.cover),
+                    child: _buildPreviewImage(),
                   ),
                 ),
                 Positioned(
@@ -119,7 +109,6 @@ class _AddPostSheetState extends State<AddPostSheet> {
                 ),
               ],
             ),
-
           TextField(
             controller: _textController,
             autofocus: true,
@@ -138,24 +127,23 @@ class _AddPostSheetState extends State<AddPostSheet> {
             ),
             maxLines: 3,
           ),
-
           const SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
             height: 55,
             child: ElevatedButton(
               onPressed: () {
-                // Allows posting if there is either text OR an image
                 if (_textController.text.isNotEmpty || _imagePath != null) {
                   final newPost = Post(
+                    id: DateTime.now().millisecondsSinceEpoch.toString(),
                     category: _selectedCategory,
                     content: _textController.text.isEmpty ? "" : _textController.text,
                     imagePath: _imagePath,
+                    isUserPost: true,
                   );
                   widget.onPostAdded(newPost);
                   Navigator.pop(context);
                 } else {
-                  // Show a message if both are empty
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text("Please add some text or an image")),
                   );
@@ -173,6 +161,18 @@ class _AddPostSheetState extends State<AddPostSheet> {
         ],
       ),
     );
+  }
+
+  Widget _buildPreviewImage() {
+    if (_imagePath == null) return const SizedBox.shrink();
+    
+    // On Web, image_picker returns a blob URL which must be loaded via Image.network
+    if (kIsWeb || _imagePath!.startsWith('http') || _imagePath!.startsWith('blob:')) {
+      return Image.network(_imagePath!, fit: BoxFit.cover);
+    } else {
+      // On Mobile, it's a file path
+      return Image.file(File(_imagePath!), fit: BoxFit.cover);
+    }
   }
 
   Widget _categoryIcon(String emoji, String label) {

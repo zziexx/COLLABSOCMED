@@ -1,10 +1,37 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../screens/onboarding_screen.dart';
+import '../models/post.dart';
+import '../services/post_service.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
-  // 1. Helper function to show the settings menu
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  final PostService _postService = PostService();
+  bool _isEditing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _postService.addListener(_onPostsChanged);
+  }
+
+  @override
+  void dispose() {
+    _postService.removeListener(_onPostsChanged);
+    super.dispose();
+  }
+
+  void _onPostsChanged() {
+    setState(() {});
+  }
+
   void _showSettingsMenu(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -15,7 +42,7 @@ class ProfileScreen extends StatelessWidget {
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 20),
           child: Column(
-            mainAxisSize: MainAxisSize.min, // Menu only takes as much space as needed
+            mainAxisSize: MainAxisSize.min,
             children: [
               Container(
                 width: 40,
@@ -48,14 +75,11 @@ class ProfileScreen extends StatelessWidget {
                 leading: const Icon(Icons.logout, color: Colors.red),
                 title: const Text("Log Out", style: TextStyle(color: Colors.red)),
                 onTap: () {
-                  // 1. Close the Bottom Sheet first
                   Navigator.pop(context);
-
-                  // 2. Navigate to Onboarding and clear the navigation history
                   Navigator.pushAndRemoveUntil(
                     context,
                     MaterialPageRoute(builder: (context) => const OnboardingScreen()),
-                        (route) => false, // This line removes all previous screens
+                        (route) => false,
                   );
                 },
               ),
@@ -68,24 +92,7 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final List<Map<String, String>> sharedItems = [
-      {
-        "title": "Mountain Bike",
-        "image": "https://tse1.mm.bing.net/th/id/OIP._0S85LmNCCw2j_oGSE5uqgHaE8?rs=1&pid=ImgDetMain&o=7&rm=3"
-      },
-      {
-        "title": "Projector",
-        "image": "https://cdn.shopify.com/s/files/1/1703/3025/files/UHD663_600x600.webp?v=1690418464"
-      },
-      {
-        "title": "Camping Tent",
-        "image": "https://www.thecrazyoutdoormama.com/wp-content/uploads/2023/05/camping-setup-ideas-morris-m.jpg"
-      },
-      {
-        "title": "Pressure Washer",
-        "image": "https://m.media-amazon.com/images/I/719hY-wvVqL._AC_SL1500_.jpg"
-      },
-    ];
+    final List<Post> userPosts = _postService.userPosts;
 
     return Scaffold(
       appBar: AppBar(
@@ -93,7 +100,7 @@ class ProfileScreen extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.settings_outlined),
-            onPressed: () => _showSettingsMenu(context), // 2. Connected the function here
+            onPressed: () => _showSettingsMenu(context),
           ),
         ],
       ),
@@ -105,10 +112,8 @@ class ProfileScreen extends StatelessWidget {
               radius: 50,
               backgroundColor: Colors.teal[50],
               backgroundImage: const NetworkImage('https://i.pravatar.cc/150?u=a042581f4e29026704d'),
-              onBackgroundImageError: (exception, stackTrace) {
-                // Background image error handling
-              },
-              child: const Icon(Icons.person, size: 50, color: Color(0xFF00695C)), // Fallback icon if image fails
+              onBackgroundImageError: (exception, stackTrace) {},
+              child: const Icon(Icons.person, size: 50, color: Color(0xFF00695C)),
             ),
             const SizedBox(height: 16),
             const Text(
@@ -121,7 +126,7 @@ class ProfileScreen extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _buildStat("12", "Items Lent"),
+                _buildStat(userPosts.length.toString(), "Items Lent"),
                 _buildStat("48", "Help Points"),
                 _buildStat("5.0", "Rating"),
               ],
@@ -139,38 +144,65 @@ class ProfileScreen extends StatelessWidget {
                 children: [
                   const Text("Your Shared Items",
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  TextButton(onPressed: () {}, child: const Text("Edit All")),
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _isEditing = !_isEditing;
+                      });
+                    }, 
+                    child: Text(_isEditing ? "Done" : "Edit All")
+                  ),
                 ],
               ),
             ),
 
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(20),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 15,
-                mainAxisSpacing: 15,
-                childAspectRatio: 0.75,
+            if (userPosts.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(40.0),
+                child: Text("You haven't shared any items yet.", style: TextStyle(color: Colors.grey)),
+              )
+            else
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(20),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 15,
+                  mainAxisSpacing: 15,
+                  childAspectRatio: 0.75,
+                ),
+                itemCount: userPosts.length,
+                itemBuilder: (context, index) {
+                  final post = userPosts[index];
+                  return Stack(
+                    children: [
+                      _buildItemCard(post),
+                      if (_isEditing)
+                        Positioned(
+                          right: 5,
+                          top: 5,
+                          child: GestureDetector(
+                            onTap: () {
+                              _postService.removePost(post.id);
+                            },
+                            child: const CircleAvatar(
+                              backgroundColor: Colors.red,
+                              radius: 15,
+                              child: Icon(Icons.remove, color: Colors.white, size: 18),
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                },
               ),
-              itemCount: sharedItems.length,
-              itemBuilder: (context, index) {
-                // Safety check: ensure the data exists before passing to widget
-                final item = sharedItems[index];
-                return _buildItemCard(
-                    item["title"] ?? "Unknown Item", // Fallback if null
-                    item["image"] ?? ""             // Fallback if null
-                );
-              },
-            ),
           ],
         ),
       ),
     );
   }
 
-  // ... (Stats and ItemCard helper methods remain the same)
   Widget _buildStat(String value, String label) {
     return Column(
       children: [
@@ -180,7 +212,54 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildItemCard(String title, String imageUrl) {
+  Widget _buildItemCard(Post post) {
+    final String title = post.content.isEmpty ? post.category : post.content;
+    final String imagePath = post.imagePath ?? "";
+    
+    Widget imageWidget;
+    
+    if (imagePath.isEmpty) {
+      imageWidget = Container(
+        color: Colors.teal[50],
+        child: const Center(child: Icon(Icons.image_not_supported_outlined, color: Color(0xFF00695C))),
+      );
+    } else if (kIsWeb || imagePath.startsWith('http') || imagePath.startsWith('blob:')) {
+      imageWidget = Image.network(
+        imagePath,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Container(
+            color: Colors.teal[50],
+            child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            color: Colors.teal[50],
+            child: const Center(
+              child: Icon(Icons.image_not_supported_outlined, color: Color(0xFF00695C)),
+            ),
+          );
+        },
+      );
+    } else {
+      imageWidget = Image.file(
+        File(imagePath),
+        fit: BoxFit.cover,
+        width: double.infinity,
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            color: Colors.teal[50],
+            child: const Center(
+              child: Icon(Icons.image_not_supported_outlined, color: Color(0xFF00695C)),
+            ),
+          );
+        },
+      );
+    }
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -200,26 +279,7 @@ class ProfileScreen extends StatelessWidget {
           Expanded(
             child: ClipRRect(
               borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-              child: Image.network(
-                imageUrl,
-                fit: BoxFit.cover,
-                width: double.infinity,
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return Container(
-                    color: Colors.teal[50],
-                    child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                  );
-                },
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    color: Colors.teal[50],
-                    child: const Center(
-                      child: Icon(Icons.image_not_supported_outlined, color: Color(0xFF00695C)),
-                    ),
-                  );
-                },
-              ),
+              child: imageWidget,
             ),
           ),
           Padding(
@@ -234,7 +294,24 @@ class ProfileScreen extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
-                const Text("Available", style: TextStyle(color: Colors.green, fontSize: 11, fontWeight: FontWeight.w600)),
+                GestureDetector(
+                  onTap: () => _postService.toggleAvailability(post.id),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: post.isAvailable ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      post.isAvailable ? "Available" : "Not Available",
+                      style: TextStyle(
+                        color: post.isAvailable ? Colors.green : Colors.red,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),

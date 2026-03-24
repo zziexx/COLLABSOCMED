@@ -1,18 +1,8 @@
 import 'package:flutter/material.dart';
 import '../widgets/post_card.dart';
 import '../widgets/add_post_sheet.dart';
-
-class Post {
-  final String category;
-  final String content;
-  final String? imagePath; // <--- Make sure this line exists
-
-  Post({
-    required this.category,
-    required this.content,
-    this.imagePath, // <--- Make sure this is in the constructor
-  });
-}
+import '../models/post.dart';
+import '../services/post_service.dart';
 
 class FeedScreen extends StatefulWidget {
   const FeedScreen({super.key});
@@ -23,24 +13,44 @@ class FeedScreen extends StatefulWidget {
 
 class _FeedScreenState extends State<FeedScreen> {
   String _selectedFilter = "All Items";
+  final PostService _postService = PostService();
 
-  // Mock data - existing posts don't have images (imagePath: null)
-  final List<Post> _allPosts = [
-    Post(category: "🛠️ Tools", content: "Lending my drill for the weekend!"),
-    Post(category: "🌿 Garden", content: "Fresh tomatoes available at my porch."),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _postService.addListener(_onPostsChanged);
+  }
+
+  @override
+  void dispose() {
+    _postService.removeListener(_onPostsChanged);
+    super.dispose();
+  }
+
+  void _onPostsChanged() {
+    setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
+    final List<Post> allPosts = _postService.allPosts;
+    
     // Filter logic
     final List<Post> filteredPosts = _selectedFilter == "All Items"
-        ? _allPosts
-        : _allPosts.where((post) => post.category == _selectedFilter).toList();
+        ? allPosts
+        : allPosts.where((post) => post.category == _selectedFilter).toList();
 
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          // ... (Keep your SliverAppBar code here)
+          // Keeping the app bar structure consistent
+          SliverAppBar(
+            floating: true,
+            title: const Text("Neighbors Porch", style: TextStyle(fontWeight: FontWeight.bold)),
+            actions: [
+              IconButton(icon: const Icon(Icons.search), onPressed: () {}),
+            ],
+          ),
 
           // Filter Chips Row
           SliverToBoxAdapter(
@@ -62,13 +72,12 @@ class _FeedScreenState extends State<FeedScreen> {
             ),
           ),
 
-          // 2. THE FEED LIST
+          // THE FEED LIST
           SliverPadding(
             padding: const EdgeInsets.only(bottom: 100),
             sliver: SliverList(
               delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                  // Passes the Post (including imagePath) to the PostCard
+                (context, index) {
                   return PostCard(post: filteredPosts[index]);
                 },
                 childCount: filteredPosts.length,
@@ -78,7 +87,6 @@ class _FeedScreenState extends State<FeedScreen> {
         ],
       ),
 
-      // 3. TRIGGERING THE UPLOAD SHEET
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: const Color(0xFF00695C),
         icon: const Icon(Icons.add_circle_outline, color: Colors.white),
@@ -90,10 +98,7 @@ class _FeedScreenState extends State<FeedScreen> {
             backgroundColor: Colors.transparent,
             builder: (context) => AddPostSheet(
               onPostAdded: (newPost) {
-                // This updates the feed list with the new post + image
-                setState(() {
-                  _allPosts.insert(0, newPost);
-                });
+                _postService.addPost(newPost);
               },
             ),
           );

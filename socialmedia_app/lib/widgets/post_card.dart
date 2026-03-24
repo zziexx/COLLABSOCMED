@@ -1,7 +1,7 @@
 import 'dart:io';
-import 'package:flutter/foundation.dart'; // Required for kIsWeb check
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import '../screens/feed_screen.dart';
+import '../models/post.dart';
 
 class PostCard extends StatelessWidget {
   final Post post;
@@ -19,7 +19,6 @@ class PostCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. Category Header (Restored)
             Row(
               children: [
                 CircleAvatar(
@@ -38,11 +37,26 @@ class PostCard extends StatelessWidget {
                     color: Color(0xFF00695C),
                   ),
                 ),
+                const Spacer(),
+                // Availability Tag
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: post.isAvailable ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    post.isAvailable ? "Available" : "Not Available",
+                    style: TextStyle(
+                      color: post.isAvailable ? Colors.green : Colors.red,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 12),
-
-            // 2. Text Content
             if (post.content.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(bottom: 12.0),
@@ -51,31 +65,34 @@ class PostCard extends StatelessWidget {
                   style: const TextStyle(fontSize: 16, color: Colors.black87),
                 ),
               ),
-
-            // 3. Image Section (Safe for Web and Mobile)
             if (post.imagePath != null && post.imagePath!.isNotEmpty)
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: kIsWeb
-                    ? Image.network(
-                  post.imagePath!,
-                  width: double.infinity,
-                  height: 200,
-                  fit: BoxFit.cover,
-                )
-                    : Image.file(
-                  File(post.imagePath!),
-                  width: double.infinity,
-                  height: 200,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return const SizedBox.shrink(); // Hide if file not found
-                  },
-                ),
+                child: _buildImage(post.imagePath!),
               ),
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildImage(String path) {
+    if (kIsWeb || path.startsWith('http') || path.startsWith('blob:')) {
+      return Image.network(
+        path,
+        width: double.infinity,
+        height: 200,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
+      );
+    } else {
+      return Image.file(
+        File(path),
+        width: double.infinity,
+        height: 200,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
+      );
+    }
   }
 }
