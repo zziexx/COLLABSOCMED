@@ -42,7 +42,6 @@ dependencies:
   firebase_core: ^3.10.1
   firebase_auth: ^5.4.1
   cloud_firestore: ^5.6.2
-  google_sign_in: ^6.2.2
   firebase_storage: ^12.4.0
 
 dev_dependencies:
@@ -106,5 +105,5 @@ flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
   image_path: "assets/logo.jpg"
-  adaptive_icon_path: "#00695C"
+  adaptive_icon_background: "#00695C"
   adaptive_icon_foreground: "assets/logo.jpg"
