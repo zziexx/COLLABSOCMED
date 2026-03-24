@@ -49,8 +49,11 @@ class _FeedScreenState extends State<FeedScreen> {
                 fit: StackFit.expand,
                 children: [
                   Image.network(
-                    'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=800&q=80',
-                    fit: BoxFit.cover,
+                    'https://www.touristsecrets.com/wp-content/uploads/2024/09/hidden-wild-pawpaw-patches-of-louisiana-1727483699.jpg',                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      color: Colors.teal[100],
+                      child: const Icon(Icons.landscape, size: 50, color: Colors.white),
+                    ),
                   ),
                   Container(
                     decoration: BoxDecoration(
