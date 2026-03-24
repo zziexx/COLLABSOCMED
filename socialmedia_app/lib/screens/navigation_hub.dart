@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'feed_screen.dart';
 import 'chat_screen.dart';
 import 'profile_screen.dart';
+import 'notifications_screen.dart'; // Ensure this exists
 
+/// The main navigation hub of the app, containing the bottom navigation bar.
 class NavigationHub extends StatefulWidget {
   const NavigationHub({super.key});
 
@@ -13,12 +15,14 @@ class NavigationHub extends StatefulWidget {
 }
 
 class _NavigationHubState extends State<NavigationHub> {
-  int _selectedIndex = 0;
-  int _unreadNotifications = 0;
+  int _selectedIndex = 0; // Currently selected tab index
+  int _unreadNotifications = 0; // Counter for unread activity
 
+  // List of primary screens for each tab
   final List<Widget> _screens = [
     const FeedScreen(),
     const ChatScreen(),
+    const NotificationsScreen(), // Added Notifications tab
     const ProfileScreen(),
   ];
 
@@ -28,23 +32,22 @@ class _NavigationHubState extends State<NavigationHub> {
     _listenToNotifications();
   }
 
+  /// Listens to real-time updates in the notifications collection for the current user.
   void _listenToNotifications() {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
+    // Listen for notifications specifically for the logged-in user
     FirebaseFirestore.instance
-        .collection('posts')
-        .where('userId', isNotEqualTo: user.uid)
-        .orderBy('userId')
-        .orderBy('createdAt', descending: true)
-        .limit(5)
+        .collection('notifications')
+        .where('recipientId', isEqualTo: user.uid)
         .snapshots()
         .listen((snapshot) {
-      if (mounted && _selectedIndex != 0) {
+      if (mounted) {
         setState(() {
-          _unreadNotifications = snapshot.docChanges
-              .where((change) => change.type == DocumentChangeType.added)
-              .length;
+          // In a real app, you'd track a 'read' boolean field. 
+          // For this MVP, we show the count of recent notifications.
+          _unreadNotifications = snapshot.docs.length;
         });
       }
     });
@@ -74,7 +77,8 @@ class _NavigationHubState extends State<NavigationHub> {
             onTap: (index) {
               setState(() {
                 _selectedIndex = index;
-                if (index == 0) _unreadNotifications = 0;
+                // Reset counter when clicking the notifications tab
+                if (index == 2) _unreadNotifications = 0;
               });
             },
             type: BottomNavigationBarType.fixed,
@@ -85,23 +89,29 @@ class _NavigationHubState extends State<NavigationHub> {
             selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
             unselectedLabelStyle: const TextStyle(fontSize: 12),
             items: [
-              BottomNavigationBarItem(
-                icon: Badge(
-                  label: Text(_unreadNotifications.toString()),
-                  isLabelVisible: _unreadNotifications > 0,
-                  child: const Icon(Icons.home_outlined),
-                ),
-                activeIcon: Badge(
-                  label: Text(_unreadNotifications.toString()),
-                  isLabelVisible: _unreadNotifications > 0,
-                  child: const Icon(Icons.home),
-                ),
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.home_outlined),
+                activeIcon: Icon(Icons.home),
                 label: 'Porch',
               ),
               const BottomNavigationBarItem(
                 icon: Icon(Icons.chat_bubble_outline),
                 activeIcon: Icon(Icons.chat_bubble),
                 label: 'Chats',
+              ),
+              // THE NEW NOTIFICATIONS TAB
+              BottomNavigationBarItem(
+                icon: Badge(
+                  label: Text(_unreadNotifications.toString()),
+                  isLabelVisible: _unreadNotifications > 0,
+                  child: const Icon(Icons.notifications_none),
+                ),
+                activeIcon: Badge(
+                  label: Text(_unreadNotifications.toString()),
+                  isLabelVisible: _unreadNotifications > 0,
+                  child: const Icon(Icons.notifications),
+                ),
+                label: 'Activity',
               ),
               const BottomNavigationBarItem(
                 icon: Icon(Icons.person_outline),

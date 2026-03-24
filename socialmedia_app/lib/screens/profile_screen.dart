@@ -11,8 +11,9 @@ import '../screens/chat_screen.dart';
 import '../models/post.dart';
 import '../services/post_service.dart';
 
+/// Screen displaying user profile information and their shared posts.
 class ProfileScreen extends StatefulWidget {
-  final String? userId;
+  final String? userId; // Optional: ID of the user whose profile is being viewed
   const ProfileScreen({super.key, this.userId});
 
   @override
@@ -22,19 +23,21 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final PostService _postService = PostService();
   final String? _currentUserId = FirebaseAuth.instance.currentUser?.uid;
-  bool _isEditing = false;
-  bool _isUpdatingPhoto = false;
+  bool _isEditing = false; // Toggle for post deletion mode
+  bool _isUpdatingPhoto = false; // Loading state for photo upload
 
+  // Determine whose profile is being viewed (defaults to current user)
   String get _effectiveUserId => widget.userId ?? _currentUserId ?? "";
   bool get _isOwnProfile => _effectiveUserId == _currentUserId;
 
+  /// Opens gallery to pick and upload a new profile picture.
   Future<void> _updateProfilePicture() async {
     if (!_isOwnProfile) return;
     
     final ImagePicker picker = ImagePicker();
     final XFile? image = await picker.pickImage(
       source: ImageSource.gallery,
-      imageQuality: 30,
+      imageQuality: 30, // Compress to keep Firestore document size small
       maxWidth: 300,
     );
 
@@ -46,6 +49,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final bytes = await image.readAsBytes();
       final String base64Image = base64Encode(bytes);
 
+      // Save the base64 image string directly to the user's document
       await FirebaseFirestore.instance.collection('users').doc(_effectiveUserId).update({
         'photoUrl': base64Image,
       });
@@ -66,6 +70,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  /// Opens a dialog to change the user's display name.
   void _showEditProfileDialog(String currentName) {
     if (!_isOwnProfile) return;
     
@@ -100,6 +105,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  /// Displays a menu with settings like edit name, change photo, or logout.
   void _showSettingsMenu(BuildContext context, String currentName) {
     showModalBottomSheet(
       context: context,
@@ -113,13 +119,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 10),
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(10),
-                ),
+                width: 40, height: 4, margin: const EdgeInsets.only(bottom: 10),
+                decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10)),
               ),
               const Text("Settings", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 10),
@@ -146,10 +147,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 title: const Text("Notifications"),
                 onTap: () {
                   Navigator.pop(bottomSheetContext);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const NotificationsScreen()),
-                  );
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => const NotificationsScreen()));
                 },
               ),
               const Divider(),
@@ -161,9 +159,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   if (mounted) {
                     Navigator.pop(bottomSheetContext);
                     Navigator.pushAndRemoveUntil(
-                      context,
-                      MaterialPageRoute(builder: (context) => const OnboardingScreen()),
-                      (route) => false,
+                      context, MaterialPageRoute(builder: (context) => const OnboardingScreen()), (route) => false,
                     );
                   }
                 },
@@ -178,6 +174,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<DocumentSnapshot>(
+      // Listen to profile data for the user being viewed
       stream: FirebaseFirestore.instance.collection('users').doc(_effectiveUserId).snapshots(),
       builder: (context, userSnapshot) {
         String displayName = "Neighbor";
@@ -203,6 +200,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           ),
           body: StreamBuilder<List<Post>>(
+            // Listen to real-time updates for posts shared by this specific user
             stream: _isOwnProfile 
                 ? _postService.userPostsStream 
                 : FirebaseFirestore.instance
@@ -220,27 +218,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Column(
                   children: [
                     const SizedBox(height: 20),
+                    // Profile Image with Edit button
                     Stack(
                       children: [
                         CircleAvatar(
                           radius: 50,
                           backgroundColor: Colors.teal[50],
-                          backgroundImage: photoData != null
-                              ? _buildProfileImage(photoData)
-                              : const NetworkImage('https://i.pravatar.cc/150?u=a042581f4e29026704d') as ImageProvider,
+                          backgroundImage: photoData != null ? _buildProfileImage(photoData) : null,
                           child: _isUpdatingPhoto 
                             ? const CircularProgressIndicator(color: Color(0xFF00695C))
                             : (photoData == null ? const Icon(Icons.person, size: 50, color: Color(0xFF00695C)) : null),
                         ),
                         if (_isOwnProfile)
                           Positioned(
-                            bottom: 0,
-                            right: 0,
+                            bottom: 0, right: 0,
                             child: GestureDetector(
                               onTap: _isUpdatingPhoto ? null : _updateProfilePicture,
                               child: const CircleAvatar(
-                                radius: 18,
-                                backgroundColor: Color(0xFF00695C),
+                                radius: 18, backgroundColor: Color(0xFF00695C),
                                 child: Icon(Icons.edit, color: Colors.white, size: 18),
                               ),
                             ),
@@ -248,12 +243,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    Text(
-                      displayName,
-                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                    ),
+                    Text(displayName, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
                     Text("Greenwood Hills • Member since $memberSince"),
                     
+                    // Message button when viewing someone else's profile
                     if (!_isOwnProfile) ...[
                       const SizedBox(height: 16),
                       ElevatedButton.icon(
@@ -263,8 +256,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             MaterialPageRoute(
                               builder: (context) => IndividualChatScreen(
                                 name: displayName,
-                                // Passing a dummy post with userId to trigger chat creation
                                 sharedPost: Post(id: "", category: "General Chat", content: "", userId: _effectiveUserId),
+                                otherUserId: _effectiveUserId,
                               ),
                             ),
                           );
@@ -280,21 +273,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ],
                     
                     const SizedBox(height: 24),
-
+                    // Display count of items shared
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
                         _buildStat(userPosts.length.toString(), "Items Shared"),
-                        _buildStat("48", "Help Points"),
-                        _buildStat("5.0", "Rating"),
                       ],
                     ),
 
-                    const Padding(
-                      padding: EdgeInsets.all(20.0),
-                      child: Divider(),
-                    ),
+                    const Padding(padding: EdgeInsets.all(20.0), child: Divider()),
 
+                    // List of posts shared by this user
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: Row(
@@ -304,11 +293,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                           if (_isOwnProfile && userPosts.isNotEmpty)
                             TextButton(
-                              onPressed: () {
-                                setState(() {
-                                  _isEditing = !_isEditing;
-                                });
-                              },
+                              onPressed: () => setState(() => _isEditing = !_isEditing),
                               child: Text(_isEditing ? "Done" : "Edit All"),
                             ),
                         ],
@@ -316,10 +301,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
 
                     if (postSnapshot.connectionState == ConnectionState.waiting)
-                      const Padding(
-                        padding: EdgeInsets.all(40.0),
-                        child: CircularProgressIndicator(),
-                      )
+                      const Padding(padding: EdgeInsets.all(40.0), child: CircularProgressIndicator())
                     else if (userPosts.isEmpty)
                       Padding(
                         padding: const EdgeInsets.all(40.0),
@@ -331,10 +313,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         physics: const NeverScrollableScrollPhysics(),
                         padding: const EdgeInsets.all(20),
                         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 15,
-                          mainAxisSpacing: 15,
-                          childAspectRatio: 0.75,
+                          crossAxisCount: 2, crossAxisSpacing: 15, mainAxisSpacing: 15, childAspectRatio: 0.75,
                         ),
                         itemCount: userPosts.length,
                         itemBuilder: (context, index) {
@@ -342,17 +321,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           return Stack(
                             children: [
                               _buildItemCard(post),
+                              // Delete button shown in edit mode
                               if (_isEditing && _isOwnProfile)
                                 Positioned(
-                                  right: 5,
-                                  top: 5,
+                                  right: 5, top: 5,
                                   child: GestureDetector(
-                                    onTap: () {
-                                      _postService.removePost(post.id);
-                                    },
+                                    onTap: () => _postService.removePost(post.id),
                                     child: const CircleAvatar(
-                                      backgroundColor: Colors.red,
-                                      radius: 15,
+                                      backgroundColor: Colors.red, radius: 15,
                                       child: Icon(Icons.remove, color: Colors.white, size: 18),
                                     ),
                                   ),
@@ -371,18 +347,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  /// Helper to build an ImageProvider from base64 or URL profile data.
   ImageProvider _buildProfileImage(String data) {
-    if (data.startsWith('http')) {
-      return NetworkImage(data);
-    } else {
-      try {
-        return MemoryImage(base64Decode(data));
-      } catch (e) {
-        return const NetworkImage('https://i.pravatar.cc/150?u=a042581f4e29026704d');
-      }
+    if (data.startsWith('http')) return NetworkImage(data);
+    try {
+      return MemoryImage(base64Decode(data));
+    } catch (e) {
+      return const NetworkImage('https://i.pravatar.cc/150?u=a042581f4e29026704d');
     }
   }
 
+  /// Helper for building individual stat counters (e.g., "Items Shared").
   Widget _buildStat(String value, String label) {
     return Column(
       children: [
@@ -392,72 +367,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  /// Builds an individual item card for the profile grid.
   Widget _buildItemCard(Post post) {
     final String title = post.content.isEmpty ? post.category : post.content;
     final String imagePath = post.imagePath ?? "";
-
     Widget imageWidget;
 
     if (imagePath.isEmpty) {
-      imageWidget = Container(
-        color: Colors.teal[50],
-        child: const Center(child: Icon(Icons.image_not_supported_outlined, color: Color(0xFF00695C))),
-      );
+      imageWidget = Container(color: Colors.teal[50], child: const Center(child: Icon(Icons.image_not_supported_outlined, color: Color(0xFF00695C))));
     } else if (imagePath.length > 500) {
-      imageWidget = Image.memory(
-        base64Decode(imagePath),
-        fit: BoxFit.cover,
-        width: double.infinity,
-      );
-    } else if (kIsWeb || imagePath.startsWith('http') || imagePath.startsWith('blob:')) {
-      imageWidget = Image.network(
-        imagePath,
-        fit: BoxFit.cover,
-        width: double.infinity,
-        errorBuilder: (context, error, stackTrace) => Container(color: Colors.grey[200]),
-      );
+      imageWidget = Image.memory(base64Decode(imagePath), fit: BoxFit.cover, width: double.infinity);
     } else {
-      imageWidget = Image.file(
-        File(imagePath),
-        fit: BoxFit.cover,
-        width: double.infinity,
-      );
+      imageWidget = Image.network(imagePath, fit: BoxFit.cover, width: double.infinity, errorBuilder: (_,__,___) => Container(color: Colors.grey[200]));
     }
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          )
-        ],
+        color: Colors.white, borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 5))],
         border: Border.all(color: Colors.grey[100]!),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-              child: imageWidget,
-            ),
-          ),
+          Expanded(child: ClipRRect(borderRadius: const BorderRadius.vertical(top: Radius.circular(20)), child: imageWidget)),
           Padding(
             padding: const EdgeInsets.all(12.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 4),
+                // Toggle availability badge
                 GestureDetector(
                   onTap: _isOwnProfile ? () => _postService.toggleAvailability(post.id, post.isAvailable) : null,
                   child: Container(
@@ -468,11 +409,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     child: Text(
                       post.isAvailable ? "Available" : "Not Available",
-                      style: TextStyle(
-                        color: post.isAvailable ? Colors.green : Colors.red,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                      ),
+                      style: TextStyle(color: post.isAvailable ? Colors.green : Colors.red, fontSize: 11, fontWeight: FontWeight.w600),
                     ),
                   ),
                 ),
